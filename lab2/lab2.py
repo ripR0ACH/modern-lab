@@ -64,7 +64,7 @@ for d in data:
             else:
                 runs[i].add_data(*line.split())
     sensors.append(runs)
-fig, ax = plt.subplots(1, 2)
+fig, ax = plt.subplots(2, 1)
 for sensor in range(len(sensors)):
     for j in range(len(sensors[sensor])):
         for k in range(len(sensors[sensor][j].w)):
