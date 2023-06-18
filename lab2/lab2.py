@@ -1,33 +1,35 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
+from decimal import *
 
 data = ["data061323_highbw_lowsens.txt", "data061323_lowbw_highsens.txt"]
 calibration_data = ["calibration1.txt", "calibration2.txt"]
 wavelength_calibration = "wavelength_calibration.txt"
-pixel_calibration = "pixel_calibration.txt"
 sens_cal = "sens_calibration.txt"
+
+h = 6.626e-34
+c = 2.998e8
+k = 1.381e-23
+T_guess = 3000
 
 def fit_func(pix, i, c1, c2, c3):
     return i + c1 * pix + c2 * pix**2 + c3 * pix**3
-
+a = 2 * h * np.power(c, 2)
+def blackbody(w, T):
+    return (a / np.power(w, 5)) * (1 / np.expm1((h * c) / (k * T * w)))
 class Run:
     def __init__(self, title):
         self.title = title
         self.w = [] # array of wavelengths
         self.i = [] # array of intensities
     def __add_wavelength(self, w):
-        self.w.append(float(w))
+        self.w.append(float(w) * 1e-9)
     def __add_intensity(self, i):
         self.i.append(float(i))
     def add_data(self, w, i):
         self.__add_wavelength(w)
         self.__add_intensity(i)
-with open(pixel_calibration, "r") as f:
-    lines = f.readlines()
-    pix = Run(lines[0].replace('\n', ''))
-    for line in lines[1:]:
-        pix.add_data(*line.split())
 with open(wavelength_calibration, "r") as f:
     lines = f.readlines()
     wave = Run(lines[0].replace('\n', ''))
@@ -41,8 +43,6 @@ with open(sens_cal, "r") as f:
     sens_factor = Run("Sensitivity Factor Calibration")
     for line in lines:
         sens_factor.add_data(float(line.split()[0].replace(',', '')), float(line.split()[1]))
-popt, pcov = curve_fit(fit_func, pix.w[:len(wave.w)], wave.w)
-intercept, c1, c2, c3 = enumerate(popt)
 true_vals = [369.67, 408.99, 412.17, 440.06, 550.91, 581.97, 584.20]
 expected_vals = [365.015, 404.656, 407.783, 435.833, 546.074, 576.960, 579.066]
 vals_diff = []
@@ -78,7 +78,8 @@ for sensor in range(len(sensors)):
                 sensors[sensor][j].i[k] *= sens_factor.i[sens_i] / 100
 for s in sensors[0]:
     ax[0].plot(s.w, s.i, label = s.title)
-for s in sensors[1]:
-    ax[1].plot(s.w, s.i, label = s.title)
+ax[0].plot(wave.w, blackbody(wave.w, T_guess))
 plt.show()
+# for s in sensors[1]:
+#     ax[1].plot(s.w, s.i, label = s.title)
 # plt.show()
