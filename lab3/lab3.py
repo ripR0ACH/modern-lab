@@ -143,13 +143,25 @@ def compton(elements) -> np.array([]):
             else:
                 e.edges = np.append(e.edges, e.fits[fit].popt[2])
                 e.err_edges = np.append(e.err_edges, np.sqrt(e.fits[fit].pcov[2][2]))
+c = 3e8
+m = 9.11e-31
+def relativity(k):
+    return np.sqrt(np.power(k, 2) / np.power(c, 2) + 2 * m * k)
+def classical(k):
+    return np.sqrt(2 * k * m)
+def momentum(k, e):
+    return (2 * e - k) / c
 def main():
     elements = set_elements(data)
     get_fits(elements)
     compton(elements)
+    fig, ax = plt.subplots(1, 1)
     for e in elements:
         print(e.get_name())
         print(e.peaks, "+/-", str(e.err_peaks) + "\n" + str(e.edges), "+/-", str(e.err_edges) + "\n")
+        ax.plot(momentum(e.edges * 1e3, e.peaks * 1e3), 1 / relativity(e.edges * 1e3), 'o-', c = "k")
+        ax.plot(momentum(e.edges * 1e3, e.peaks * 1e3), 1 / classical(e.edges * 1e3), 'o', c = "blue")
+    plt.show()
     # plot_elements(elements)
 if __name__ == "__main__":
     main()
