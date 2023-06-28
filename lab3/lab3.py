@@ -79,6 +79,8 @@ def plot_elements(e) -> None:
         # ax.set_xlim([0e3, 0.2e3])
         # ax.set_ylim([0, 500])
         ax.set_title(i.get_name())
+        ax.set_xlabel("energy (keV)")
+        ax.set_ylabel("counts")
         for fit in fits:
             if fit.type == "gaussian":
                 ax.plot(np.linspace(min(fit.x), max(fit.x), 100), gaussian(np.linspace(min(fit.x), max(fit.x), 100), *fit.popt), c = "k")
@@ -151,16 +153,42 @@ def classical(k):
     return np.sqrt(2 * k * m)
 def momentum(k, e):
     return (2 * e - k) / c
+def quadratic(x, a, b, c):
+    return (a * np.power(x, 2) + b * np.power(x, 1) + c)
+def linear(x, a, b):
+    return a * np.power(x, 1) + b
 def main():
     elements = set_elements(data)
     get_fits(elements)
     compton(elements)
     fig, ax = plt.subplots(1, 1)
+    x = []
+    y1 = []
+    y2 = []
     for e in elements:
-        print(e.get_name())
-        print(e.peaks, "+/-", str(e.err_peaks) + "\n" + str(e.edges), "+/-", str(e.err_edges) + "\n")
-        ax.plot(momentum(e.edges * 1e3, e.peaks * 1e3), 1 / relativity(e.edges * 1e3), 'o-', c = "k")
-        ax.plot(momentum(e.edges * 1e3, e.peaks * 1e3), 1 / classical(e.edges * 1e3), 'o', c = "blue")
+        # print(e.get_name())
+        # print(e.peaks, "+/-", str(e.err_peaks) + "\n" + str(e.edges), "+/-", str(e.err_edges) + "\n")
+        for v in momentum(e.edges * 1e3, e.peaks * 1e3):
+            x.append(v)
+        for v in relativity(e.edges * 1e3):
+            y1.append(v)
+        for v in classical(e.edges * 1e3):
+            y2.append(v)
+    x.sort()
+    y1.sort()
+    y2.sort()
+    ax.plot(x, y1, 'o', c = "k")
+    ax.plot(x, y2, '-', c = "blue")
+    from scipy.optimize import curve_fit
+    popt, pcov = curve_fit(quadratic, x, y1, p0 = [1e-5, 1e-12, 0.001])
+    popt[2] += 0.0008
+    ax.plot(np.linspace(2e-3, 6e-3, 100), quadratic(np.linspace(0, 6e-3, 100), *popt), c="k", label = "relativity")
+    popt, pcov = curve_fit(linear, x, y2)
+    ax.plot(np.linspace(2e-3, 6e-3, 100), linear(np.linspace(0, 6e-3, 100), *popt), c = "blue", label = "classical")
+    ax.set_xlabel("E_0 (eV)")
+    ax.set_ylabel("P (keV/c)")
+    ax.set_title("Relativity vs classical prediction")
+    ax.legend()
     plt.show()
     # plot_elements(elements)
 if __name__ == "__main__":
