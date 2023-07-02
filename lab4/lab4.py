@@ -4,6 +4,10 @@ files = ["249-259nmFilter", "365-375nmFilter", "431-440nmFilter", "538-548nmFilt
 ODs = ["point1OD", "point3OD", "point5OD", "point9OD"]
 data = ["data/" + i for i in files]
 
+h = 6.6261e-34
+c = 2.9979e8
+e = 1.6022e-19
+
 class Filter():
     def __init__(self, data):
         self.__v = np.array([])
@@ -36,34 +40,37 @@ class Filter():
         return self.__c
     def __str__(self):
         return self.get_title()
-def logistic(x, max, growth, x0, c):
-    return max / (1 + np.exp(-growth * (x - x0))) + c
 def linear(x, a, b):
     return a * x + b
-def e(x, a, b, c, d):
-    return a * np.exp(b * (x - c)) + d
-def e1(x, a, b):
-    return a * np.exp(b * x)
+def piecewise(x, a, b, c, d, e, transition):
+    linear = a * x + b
+    exp = c * np.exp(d * (x - transition)) + e
+    return np.where(x <= transition, linear, exp)
 filters = []
 for d in data:
     filters.append(Filter(d))
 
-plt.xlim([-3, 5])
-plt.ylim([0, 5.5e9])
-guesses = [[1e7, 35, -5e-1, 1.1e7], [6e6, 10, -5e-1, 6e6]]
-# for f in range(len(filters[1:2])):
-f = 0
-from scipy.optimize import curve_fit
-popt, pcov = curve_fit(linear, filters[f].get_voltages()[:400], filters[f].get_currents()[:400], p0 = [0, 0])
-x = filters[f].get_voltages()
-y = filters[f].get_currents()
-y_linear = linear(x, *popt)
-popt, pcov = curve_fit(e, filters[f].get_voltages()[400:550], filters[f].get_currents()[400:550], p0 = guesses[f], maxfev = 5000)
-y_e = e(filters[f].get_voltages(), *popt)
-i = np.abs(y_linear - y_e).argmin()
-print(x[i])
-plt.plot(x, y_linear, label = str(filters[f].get_title() + " linear fit"))
-plt.plot(x, y_e, label = str(filters[f].get_title() + " e fit"))
-plt.plot(x, y, label = filters[f].get_title())
+plt.xlim([-1, 0.5])
+plt.ylim([-1e9, 3e9])
+end = [650, 650, 598, 620]
+guesses = [[1, 1, 1e7, 35, 1.1e7, -2], [1, 1, 1e7, 2, -4e6, -1.2], [1, 1, 9e6, 3, -6e6, -1], [1, 1, 1e6, 2, -5e6, -0.4]]
+v_s = np.array([])
+waveslengths = np.array([254, 369, 435.5, 543]) * 1e-9
+freq = 1 / waveslengths
+for f in range(len(filters[:1])):
+    f = 1
+    from scipy.optimize import curve_fit
+    x = filters[f].get_voltages()
+    y = filters[f].get_currents()
+    popt, pcov = curve_fit(piecewise, x[:end[f]], y[:end[f]], p0=guesses[f], maxfev = 10000)
+    print(popt[-1])
+    plt.plot(x, piecewise(x, *popt))
+    v_s = np.append(v_s, popt[-1])
+    plt.plot(x, y, label = filters[f].get_title())
 plt.legend()
 plt.show()
+# plt.plot(freq, v_s)
+# popt, pcov = curve_fit(linear, freq, v_s)
+# plt.plot(1 / np.linspace(250 * 1e-9, 600 * 1e-9, 1000), linear(1 / np.linspace(250 * 1e-9, 600 * 1e-9, 1000), *popt))
+# print(popt)
+# plt.show()
